@@ -1,0 +1,6 @@
+[gd_resource type="Theme" script_class="CafeTheme" format=3]
+
+[ext_resource type="Script" path="res://scripts/ui/CafeTheme.cs" id="1_cafe"]
+
+[resource]
+script = ExtResource("1_cafe")

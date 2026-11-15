@@ -37,7 +37,7 @@ Progression: coins unlock recipes (Matcha on day 2, Cake on day 5) and decor. Ea
 ### Cast
 - **Barista** (player): green apron, behind the counter
 - **Biscuit**: orange shop cat
-- Regular customers (shared body, recoloured): **Juniper** (regular), **Sage** (studies here), **Milo** (commuter), **Rosie** (sweet tooth), **Theo** (night owl)
+- Regular customers (three body shapes, recoloured): **Juniper** (regular), **Sage** (studies here), **Milo** (commuter), **Rosie** (sweet tooth), **Theo** (night owl)
 
 ### Palette (outlines are Espresso, never pure black)
 Espresso #2b1d1f · Dark Roast #4a2f2a · Walnut #6e4434 · Oak #9a6440 · Honey #c48a56 · Latte #e3b98a · Cream #f5e2c4 · Milk #fff6e6 · Cherry #b5453a · Apricot #e07a4f · Lamplight #f2c45a · Fern #5f8a52 · Matcha #8fb36a · Dusk #4f6d8a · Sky #8db1c4 · Rose #d98a9a · Peach #f0c3a0 · Cinnamon #b9785a
@@ -48,21 +48,26 @@ Text: Espresso. Secondary text: Walnut. Accent headings: Cherry. Patience bar fi
 Intended specs: 16 px tile grid, characters 16x24, cat 16x16, menu items 16x16, icons 10x10 in 16 px cells.
 Animation: idles at 4 fps, actions at 8 fps, blink every 3–5 s.
 
-| File | Contents |
-|---|---|
-| `barista.png` | Barista: idle, bob, blink frames |
-| `cat.png` | Biscuit: idle, blink |
-| `customers.png` | Juniper, Sage, Milo, Rosie, Theo (left to right) |
-| `menu_items.png` | Latte, Espresso, Matcha, Cocoa, Iced coffee, Croissant, Muffin, Cookie, Cake |
-| `tiles.png` | Wood floor, Checker, Wallpaper, Wainscot, Brick, Counter top, Counter |
-| `props_a.png` | Espresso machine 24x24, Window 32x32, Chalkboard 32x24, Bean shelf 32x16 |
-| `props_b.png` | Plant, Table, Chair (flip for left), Pendant lamp, all 16x16 |
-| `icons.png` | Coin, Heart, Star, Clock |
-| `ui_panel.png` | 9-slice panel, 24x24, 4 px margins |
-| `ui_button.png` | 9-slice button, 32x14, 4 px margins |
-| `bg_cafe_reference.png` | Full mockup of the café scene. **Reference only**: characters are baked in. Build the real room from tiles + props |
+The art is **individual single-frame PNGs, not sprite sheets** (41 files). `art/ART_MANIFEST.md` is the source of truth for exact sizes, frames and known quirks. Summary:
 
-**Measure the actual PNG dimensions before slicing.** Sheet layout and padding may not match the intended specs exactly. Record what you find in `art/ART_MANIFEST.md` and keep it up to date.
+| Files | Contents |
+|---|---|
+| `barista_idle/bob/blink.png` | Barista, 16x24 each (idle loop = idle + bob; blink separate) |
+| `cat_idle/blink.png` | Biscuit, 16x16 |
+| `cust_beanie/dusk/fox/rose/sage.png` | Customers, 16x24. Three body silhouettes, not one shared body. Name mapping to Juniper/Sage/Milo/Rosie/Theo is **unconfirmed** (guess: fox=Juniper, sage=Sage, beanie=Milo, rose=Rosie, dusk=Theo) |
+| `latte, espresso, matcha, cocoa, iced_coffee, croissant, muffin, cookie, cake.png` | Menu items, 16x16 (`iced_coffee` is currently 16x15) |
+| `floor_wood, floor_checker, wallpaper, wainscot, brick, counter_top, counter_front.png` | 16x16 tiles |
+| `espresso_machine` 24x24, `window` 32x32, `chalkboard` 32x24, `shelf` 32x16 | Props |
+| `plant, table, chair, lamp.png` | Props, 16x16 (chair: flip for left) |
+| `icon_coin/heart/star/clock.png` | Icons, 10x10, standalone |
+| `ui_panel.png` | 9-slice panel, 24x24, 4 px margins |
+| `ui_button.png`, `ui_button_pressed.png` | 9-slice button, 32x14, 4 px margins |
+
+`bg_cafe_reference.png` (full café mockup, characters baked in) is **reference only**; build the real room from tiles + props. It is not in `art/` yet.
+
+`art/DESIGN_REFERENCE.md` holds the UI layouts (HUD, dialogue box, title) from the design artifact, in 3x board pixels with game-pixel conversions.
+
+**Measure the actual PNG dimensions before slicing.** Layout and padding may not match the intended specs exactly. Record what you find in `art/ART_MANIFEST.md` and keep it up to date. `ArtCatalog` maps keys to files (region = whole image) so it can move to sheets later without changing callers.
 
 Art not made yet (use placeholders built from palette colours): walk cycles, seated poses, brewing minigame screens, pour-art sprites, seasonal decor. No audio yet: add hooks only.
 
