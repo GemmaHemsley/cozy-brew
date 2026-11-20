@@ -18,7 +18,7 @@ A cozy pixel-art café sim. Godot 4.7 (.NET / C#), 320x180 integer-scaled. Read 
 Run from the repo root. Set the Godot path once per terminal (your editor build lives in Downloads):
 
 ```sh
-export GODOT="$HOME/Downloads/Godot_mono.app/Contents/MacOS/Godot"
+export GODOT="/Applications/Godot_mono.app/Contents/MacOS/Godot"
 
 dotnet build                                   # the game; must be 0 errors, 0 warnings
 dotnet test tests/CozyBrew.Tests               # Godot-free logic tests (fast, no editor needed)

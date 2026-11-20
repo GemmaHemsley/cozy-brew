@@ -26,7 +26,7 @@ Open four terminals. In each, from the main checkout (`~/cozy-brew`):
 # A
 git worktree add ../cozy-brew-wp-a -b wp-a && cd ../cozy-brew-wp-a
 # B:  ../cozy-brew-wp-b / wp-b      C: ../cozy-brew-wp-c / wp-c      D: ../cozy-brew-wp-d / wp-d
-export GODOT="$HOME/Downloads/Godot_mono.app/Contents/MacOS/Godot"
+export GODOT="/Applications/Godot_mono.app/Contents/MacOS/Godot"
 dotnet build && "$GODOT" --headless --path . --import      # one-time setup per worktree
 claude
 ```
