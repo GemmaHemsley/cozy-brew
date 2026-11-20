@@ -1,70 +1,63 @@
-# WP-D review (re-review after 79941eb)
+# WP-D review (independent pass on wp-d @ fbc4f2b, plus uncommitted changes)
 
-## Verdict: APPROVE (0 Blocker, 0 Should fix, 4 Nit)
+## Verdict: CHANGES REQUESTED (0 Blocker, 2 Should fix, 4 Nit)
 
 `dotnet build`: 0 warnings, 0 errors. `dotnet test tests/CozyBrew.Tests`: 40 passed. I did not run the headless Godot smoke suite.
 
-Checked: contract signatures against docs/CONTRACTS.md (BrewStep, BrewRecipes, TimingBarConfig, TimingBarMath, TimingBar.Begin and Stopped, BrewPanel.Begin and BrewFinished). Ownership (only `scenes/brew`, `scripts/brew`, the Brew tests, BrewSmoke and reports). Godot 4 API only. No `using Godot;` in `scripts/brew/logic`. GAME_RULES numbers. Palette-only colours. ArtCatalog use. Theme variations. Pixel rules. Token and timer handling. Signal wiring.
+Checked: contract signatures against docs/CONTRACTS.md (all match). Ownership: the diff touches only scenes/brew, scripts/brew, the Brew tests, BrewSmoke and reports. Godot 4 API only. No `using Godot;` in scripts/brew/logic. GAME_RULES numbers: speeds, 0.04 + 0.06 x grind, 0.35 zero distance, 0.30..0.70 target and recipes all match. Palette-only colours, ArtCatalog use and theme variations are fine. Pixel snapping in `_Draw` is fine. Logic tests cover the edge cases: empty recipe, zero distance, symmetry and every ItemId.
 
-## Earlier findings: status
-
-- Should fix 1, re-Begin crash: RESOLVED. `BrewPanel.cs:97` calls `_bar.Cancel()` (`TimingBar.cs:71-78`), `BrewPanel.cs:140` guards `OnStepStopped` against `!_active` and an out-of-range index, and the smoke suite covers it (`BrewSmoke.cs:63-69`).
-- Should fix 2, half-pixel panel: RESOLVED. `BrewPanel.cs:118` floors the centred position, and the smoke suite checks it (`BrewSmoke.cs:81`).
-- Should fix 3, re-entry hang: RESOLVED. The `_ExitTree` unsubscribe is gone, with an explanatory comment (`BrewPanel.cs:81-83`), and the smoke suite covers remove and re-add (`BrewSmoke.cs:72-78`).
-- Nit, unused `PanelWidth`: RESOLVED.
-- Nit, idle `_Process`: RESOLVED. `SetProcess` is toggled (`TimingBar.cs:67,76,88,108,128`).
-- Nit, marker and zone mapping mismatch: RESOLVED. Both use `1 + pos * inner` (`TimingBar.cs:159-160,168`).
-- Nit, `_pendingItem` declared after first use: RESOLVED. It is now declared with the other fields (`BrewPanel.cs:34`).
+Two things in the committed state are real defects. The working-tree changes fix both, so the practical request is to commit them (with the Nit 1 and Nit 2 changes below).
 
 ## Blocker
-
 None.
 
 ## Should fix
 
-None.
+1. Committed `scripts/brew/BrewPanel.cs:78-84,150-155`: the brew stalls if the panel leaves the tree during the feedback pause.
+   - `_ExitTree` bumps `_pauseToken`. The pending 0.6 s timer then fails its token check and never calls `AdvanceStep`.
+   - Nothing re-arms it when the panel is re-added.
+   - Failure scenario: WP-E hides the brew by removing the panel while the player is on step 1 of a latte, for example on a screen swap or customer timeout. It re-adds the panel later and the bar never starts step 2. `BrewFinished` never fires and the order is stuck.
+   - The smoke suite only tested re-add between steps (`BrewSmoke.cs:63-70`), so it does not catch this.
+   - The uncommitted change (`_advancePending`, `_EnterTree`, `ScheduleAdvance`) fixes it, with a smoke test. It needs committing.
+
+2. Committed `scripts/brew/BrewPanel.cs:116-118`: the panel is centred once, using `Size` at `Begin` time.
+   - On the pending path (`Begin` before `_Ready`, `BrewPanel.cs:70-75`), `Size` is still (0,0) because layout has not run.
+   - `(Vector2.Zero - _panel.Size) / 2` then puts the panel at a negative position, partly off the left and top of the screen. It is not re-centred when layout later resizes the root.
+   - The uncommitted `Recenter` on `Resized` fixes this, with a smoke test.
 
 ## Nit
 
-1. `scripts/brew/BrewPanel.cs:78-84,150-155`. `_ExitTree` bumps `_pauseToken`. If the panel is removed from the tree during the feedback pause and then re-added, the step's accuracy is already recorded but the pending timer is now a no-op. The panel sits with the step stopped, `Active` is true, and `BrewFinished` never fires.
-   - Scenario: the café scene hides the panel by removing it mid-order.
-   - Fix: leave `_pauseToken` alone in `_ExitTree` and let `IsInstanceValid` guard the timer. Or document that removing the panel mid-brew abandons it.
-2. `scripts/brew/BrewPanel.cs:90-94`. If `Begin` is called before `_Ready`, only `_pendingItem` is set. `Active` and `StepCount` read idle and 0 until `_Ready` runs, and a second `Begin` overwrites the first. The class doc says to call `Begin` after adding the panel to the tree, so this is minor.
-3. `scripts/brew/BrewPanel.cs:117-118`. The panel is centred using `Size` when `Begin` runs. If `Begin` runs in the same frame as the first `AddChild`, `Size` may not be laid out yet. The panel would then sit at (0,0) minus half its own size until the next `Begin`. The smoke test does not exercise this. Check it in a real window, or centre in `_Notification(NotificationResized)`.
-4. `scripts/brew/BrewPanel.cs:181-191`. The test hooks `RunPendingForTests` and `SkipPauseForTests` are in production code. This is acceptable given the smoke harness. The smoke suite still never exercises the real timer path (`CreateTimer` with the token check), so a regression there would only show up in play.
+1. Committed `scripts/brew/TimingBar.cs:30,106`: `PerfectAccuracy = 0.98` means a stop just outside the green zone shows "Perfect!". The drawn zone is exactly accuracy 1.0, so the label disagrees with the picture. The uncommitted change sets 1 - 1e-9. The accompanying smoke assertion (`TimingBar.PerfectAccuracy > 0.99`) is trivial and only restates the constant.
 
-## Second opinion (/code-review)
+2. Committed `TimingBar.cs:131-146`: a click or `confirm` on the frame `Begin` runs is accepted. If `confirm` started the brew (for example Z on a prep button), the same press can stop step 1 immediately. The uncommitted `_beginFrame` guard fixes this. Caveat: `Engine.GetProcessFrames()` plus `StopNow()` used by the smoke test bypasses the guard, so the guard itself is untested.
 
-`/code-review medium` on `main..wp-d`. Findings the reviewer agent missed are listed first. Two findings overlap with the nits above but were rated higher, so they are listed too.
+3. `TimingBar.cs:81-92,106`: `Begin` called before `_Ready` silently drops the label text (`_label` is null). `StopNow` before `_Ready` would throw a NullReferenceException on `_feedback.Text`. BrewPanel avoids this, but the class is meant to be reusable by Prep (WP-E). Store the label in a field and apply it in `_Ready`.
 
-### Missed by the reviewer (all Nit)
+4. `BrewPanel.cs:184-191` (test hooks `RunPendingForTests`, `SkipPauseForTests`) and the uncommitted `AdvancePending` property are public production API that exists only for BrewSmoke. This is acceptable, but note it for WP-E. Also, `BrewSmoke` never asserts the real timer path (`StepPauseSeconds`) or a real input event.
 
-1. `scripts/brew/TimingBar.cs:112`. `_UnhandledInput` stops the bar on any `confirm` press while running, and `_GuiInput` handles any mouse press on the bar.
-   - Scenario: the player presses Z on a menu item and the handler calls `BrewPanel.Begin`. If the event is still unhandled, it reaches the new bar and stops step 1 at about position 0 as "Missed".
-   - Fix: ignore input for one frame or a short grace period, or consume the triggering event.
-2. `scripts/brew/TimingBar.cs:86`. The label says "Perfect!" for accuracy >= 0.98, but the drawn perfect zone is accuracy 1.0.
-   - Scenario: the marker stops just outside the green zone, accuracy is about 0.98, and the text says "Perfect!".
-   - Fix: use `accuracy >= 1.0` or an epsilon so the text matches the zone.
-3. `scripts/brew/BrewPanel.cs:30`. The root has `MouseFilter = Ignore`, and only the inner `PanelContainer` stops mouse input.
-   - Scenario: while a brew runs, the player clicks a customer or the counter outside the panel. The click reaches the café scene and starts another action mid-brew.
-   - Fix: add a full-rect Stop-filter backdrop while `_active`.
-4. `scripts/brew/BrewPanel.cs:143`. Only the Shot and Milk steps get their own SFX hook. Matcha, Cocoa and Ice fall back to `SfxId.Click`.
-   - Scenario: brewing matcha plays a generic click on the matcha step.
-   - Fix: add hook IDs, or note it as intentional.
+## Uncommitted changes (BrewPanel.cs, TimingBar.cs, BrewSmoke.cs)
+- Fix Should fix 1 and 2 and Nit 1 and 2 above.
+- No new problems found: `_EnterTree` runs before `_Ready` on first entry, where `_advancePending` is false, so it is harmless. `Resized += Recenter` is a self-signal and needs no disconnect.
+- The branch should not be merged with the working tree dirty. Commit these changes first.
 
-### Overlaps with the reviewer's nits, rated higher by /code-review
+## Note on commit state
+The review above was done on fbc4f2b plus the then-uncommitted working-tree changes. Those changes were committed afterwards as 598f37e (WP-D round 2), so Should fix 1 and 2 and Nits 1 and 2 are resolved on the branch head. The second opinion below was run against the 598f37e state. No code was changed by this review.
 
-- `scripts/brew/BrewPanel.cs:82` (reviewer Nit 1). `_ExitTree` bumps `_pauseToken`, and nothing re-arms the advance when the panel is re-added.
-  - Scenario: the player stops the Shot step and the panel leaves the tree during the pause. The latte stays at Step 1/2 with a stopped bar and `BrewFinished` never fires.
-  - /code-review rated this *important*. The reviewer rated it Nit.
-  - Fix: cancel the brew in `_ExitTree` (`_bar.Cancel()`, `_active = false`), or re-arm in `_EnterTree`.
-- `scripts/brew/BrewPanel.cs:117` (reviewer Nit 3). The panel is centred once in `Begin` from `Size`, which may still be (0,0) on the `_pendingItem` path before layout, and it is never re-centred.
-  - Scenario: `Begin` runs from `_Ready` with `Size` (0,0). The panel lands at `-(panelSize/2)` and draws partly off-screen.
-  - /code-review rated this *important*. The reviewer rated it Nit.
-  - Fix: re-centre on `Resized` and after each `StartStep`, using `.Floor()`.
+## Second opinion (/code-review medium)
+Findings the reviewer agent did not raise. Overlaps (Perfect threshold, trivial smoke assertion) are already covered above and omitted.
 
-## Final tally (merged)
+### Should fix
+1. `scripts/brew/BrewPanel.cs:126-142`: `StartStep()` calls `Recenter()` straight after changing the step text. Godot defers minimum-size recalculation to the end of the frame, and `Resized` fires only when the BrewPanel root resizes, not the inner panel.
+   - Failure scenario: step text or label width differs between steps (e.g. "Step 1/2" to a longer label). `ResetSize()` reads the stale minimum size and the panel sits off-centre until a resize that may never come.
+   - Fix: `CallDeferred(nameof(Recenter))`, or connect to the inner panel's `MinimumSizeChanged`.
+   - Not verified at runtime; the smoke test only checks centring after a manual `Size` assignment.
 
-Verdict: APPROVE (the reviewer's verdict stands). 0 Blocker, 0 Should fix, 8 Nit.
+### Nit
+1. `scripts/brew/TimingBar.cs:135,144`: the same-frame input guard also fires when `Begin` is called from the pause timer in `AdvanceStep`, not only from the starting click. Failure scenario: a double-tap of Z where the second press lands on the frame step 2 begins is swallowed and the bar keeps running without a response. Fix: ignore input only for the event that started the run, or only when `Begin` is called from an input handler.
+2. `scripts/brew/BrewPanel.cs:83`: `_EnterTree` re-arms with a full `StepPauseSeconds`. Repeated reparenting during a pause restarts the pause each time (low likelihood). Consider storing the remaining time.
+3. `scripts/dev/BrewSmoke.cs:89`: the centring assertions run right after `late.Size = ...` and assume `Resized` is emitted synchronously. The real case, where layout assigns the size on a later frame, is untested. Await a process frame before asserting.
+4. `scripts/dev/BrewSmoke.cs:98`: the Perfect-threshold check only tests a constant. Drive `StopNow()` at accuracy of about 0.99 and assert the label reads "Good" (overlaps reviewer Nit 1's remark).
+5. `scripts/brew/TimingBar.cs:30`: the second opinion questions the strict 1e-9 threshold, because the drawn zone is rounded to whole pixels and can differ from the logical zone by about 1 px. This is a judgement call and conflicts with reviewer Nit 1. Deciding the label from the logical half-width distance would avoid the mismatch.
 
-Note for the human: /code-review rated two of the overlapping nits (pause-token stall, centring before layout) as important. Neither affects the current call paths, but both are real failure modes if the café scene reparents the panel or calls `Begin` early. Consider promoting them to Should fix before merging.
+## Final tally (combined)
+Verdict: CHANGES REQUESTED. 0 Blocker, 3 Should fix (2 resolved in 598f37e, 1 new from second opinion), 8 Nit (4 reviewer, of which 2 resolved in 598f37e, plus 4 new from second opinion; the second opinion's Perfect-threshold items overlap and are not double-counted).
