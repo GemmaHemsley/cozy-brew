@@ -13,6 +13,7 @@ using Godot;
 public partial class GameState : Node
 {
 	public const int MaxHearts = 5;
+	public const int ChatPointsPerHeart = 3;
 
 	public static GameState Instance { get; private set; }
 
@@ -49,10 +50,17 @@ public partial class GameState : Node
 	/// <summary>0 at opening, 1 at closing time.</summary>
 	public double DayProgress => Math.Clamp(ClockSeconds / DayLengthSeconds, 0.0, 1.0);
 
+	/// <summary>Today's prep choices (special, grind, pastry stock). Recreated on NewGame and AdvanceDay.</summary>
+	public DayPlan Plan { get; set; } = new DayPlan();
+
+	/// <summary>Results of the day just played, for the Close screen. Reset (empty) on NewGame and AdvanceDay.</summary>
+	public DaySummary LastSummary { get; set; } = new DaySummary();
+
 	private float _dayLengthSeconds = 360f;
 	private bool _initialised;
 	private readonly HashSet<ItemId> _unlocked = new();
 	private readonly Dictionary<RegularId, int> _hearts = new();
+	private readonly Dictionary<RegularId, int> _chatPoints = new();
 
 	public override void _EnterTree()
 	{
@@ -112,6 +120,16 @@ public partial class GameState : Node
 		_hearts.Clear();
 		foreach (RegularId regular in Enum.GetValues<RegularId>())
 			_hearts[regular] = 0;
+
+		_chatPoints.Clear();
+		ResetDay();
+	}
+
+	/// <summary>Fresh plan (even pastry split over today's pastries) and empty summary.</summary>
+	private void ResetDay()
+	{
+		Plan = DayPlan.CreateDefault(Menu.AvailableOnDay(Day));
+		LastSummary = new DaySummary();
 	}
 
 	/// <summary>Moves to the next day: stops and resets the clock and unlocks anything due.</summary>
@@ -121,6 +139,7 @@ public partial class GameState : Node
 		ClockSeconds = 0;
 		ClockRunning = false;
 		RefreshUnlocks(announce: true);
+		ResetDay();
 		EmitSignal(SignalName.DayChanged, Day);
 	}
 
@@ -216,4 +235,19 @@ public partial class GameState : Node
 	}
 
 	public void AddHearts(RegularId regular, int amount) => SetHearts(regular, GetHearts(regular) + amount);
+
+	/// <summary>Chat points towards the next heart (0 to ChatPointsPerHeart-1).</summary>
+	public int GetChatPoints(RegularId regular) => _chatPoints.GetValueOrDefault(regular);
+
+	/// <summary>Adds one chat point; every <see cref="ChatPointsPerHeart"/> points become a heart (capped at MaxHearts).</summary>
+	public void AddChatPoint(RegularId regular)
+	{
+		int points = GetChatPoints(regular) + 1;
+		if (points >= ChatPointsPerHeart)
+		{
+			points -= ChatPointsPerHeart;
+			AddHearts(regular, 1);
+		}
+		_chatPoints[regular] = points;
+	}
 }
