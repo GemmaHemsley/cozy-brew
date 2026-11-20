@@ -16,7 +16,6 @@ public partial class BrewPanel : Control
 
 	/// <summary>Pause after a step stops so the player can read the feedback text.</summary>
 	public const double StepPauseSeconds = 0.6;
-	public const int PanelWidth = 228;
 
 	private PanelContainer _panel;
 	private TextureRect _icon;
@@ -32,6 +31,7 @@ public partial class BrewPanel : Control
 	private bool _active;
 	private bool _finishPending;
 	private int _pauseToken; // bumped to invalidate an outstanding pause timer
+	private MenuItem _pendingItem; // Begin called before _Ready
 
 	public int StepCount => _steps.Count;
 	public int StepIndex => _stepIndex;
@@ -78,11 +78,10 @@ public partial class BrewPanel : Control
 	public override void _ExitTree()
 	{
 		_pauseToken++; // any pending timer callback becomes a no-op
-		if (_bar != null)
-			_bar.Stopped -= OnStepStopped;
+		// The Stopped subscription is made once in _Ready and is deliberately NOT removed here: _Ready runs once per
+		// node lifetime, so unsubscribing would break the panel if it is removed and re-added. The bar is our child
+		// and is freed with us, so nothing leaks.
 	}
-
-	private MenuItem _pendingItem;
 
 	/// <summary>Starts brewing <paramref name="item"/>; grindQuality (0.5..1) widens the perfect zone.</summary>
 	public void Begin(MenuItem item, double grindQuality)
@@ -95,6 +94,7 @@ public partial class BrewPanel : Control
 		}
 
 		_pauseToken++;
+		_bar.Cancel(); // a bar still running from a previous Begin must not fire into the new recipe
 		_steps = BrewRecipes.StepsFor(item.Id);
 		_accuracies.Clear();
 		_stepIndex = 0;
@@ -114,7 +114,8 @@ public partial class BrewPanel : Control
 		_panel.Visible = true;
 		StartStep();
 		_panel.ResetSize();
-		_panel.SetAnchorsAndOffsetsPreset(LayoutPreset.Center);
+		// Centre by hand and floor so an odd size never lands the panel on a half pixel.
+		_panel.Position = ((Size - _panel.Size) / 2).Floor();
 	}
 
 	private void StartStep()
@@ -136,6 +137,8 @@ public partial class BrewPanel : Control
 
 	private void OnStepStopped(double accuracy)
 	{
+		if (!_active || _stepIndex >= _steps.Count)
+			return;
 		AudioHooks.Instance?.PlaySfx(_steps[_stepIndex] switch
 		{
 			BrewStep.Shot => SfxId.ShotPull,

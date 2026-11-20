@@ -46,3 +46,19 @@ BrewPanel (Control, full rect, mouse filter Ignore)
 
 ## Ideas for later
 - Moving-marker trail, perfect-zone flash, sound on perfect, pour-art step, difficulty scaling by day.
+
+## Review fixes
+Findings from `docs/reports/WP-D-review.md`.
+
+Should fix:
+1. Re-Begin crash (BrewPanel): added `TimingBar.Cancel()` (stops the bar, clears feedback, no `Stopped` emit). `BrewPanel.Begin` calls it first, and `OnStepStopped` now returns if `!_active || _stepIndex >= _steps.Count`.
+2. Half-pixel position: replaced the Center anchor preset with `_panel.Position = ((Size - _panel.Size) / 2).Floor()`.
+3. `_ExitTree`/`_Ready` Stopped re-entry hang (second opinion): removed the unsubscribe from `_ExitTree`. The subscription is made once in `_Ready` and the bar is a child freed with the panel, so nothing leaks. Explained in a comment.
+
+Nits fixed (trivial): removed unused `PanelWidth`; moved `_pendingItem` up with the fields; `TimingBar` now calls `SetProcess` so it is idle when not running or showing feedback; marker mapping aligned with the zone (centre = 1 + pos * inner, clamped).
+
+Nits left: test hooks stay in production code (the synchronous smoke suite needs them); `Begin`-before-`_Ready` pending state is still documented only (the class comment says to call Begin after adding to the tree); label-height clipping is unverified without a window.
+
+Smoke suite additions (covers the second-opinion nit): re-Begin pastry after a running drink, `StopNow` on a cancelled bar, remove and re-add the panel then run a step, whole-pixel panel position.
+
+Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke after `--import`: `SMOKE OK (26 checks)`, exit 0. Nothing skipped. No visual check in a real window.

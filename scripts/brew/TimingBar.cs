@@ -64,6 +64,17 @@ public partial class TimingBar : Control
 			Text = "",
 		};
 		AddChild(_feedback);
+		SetProcess(_running || _feedbackLeft > 0); // no per-frame work while idle
+	}
+
+	/// <summary>Aborts a running bar without emitting Stopped and clears any feedback text.</summary>
+	public void Cancel()
+	{
+		_running = false;
+		_feedbackLeft = 0;
+		if (_feedback != null) _feedback.Text = "";
+		SetProcess(false);
+		QueueRedraw();
 	}
 
 	/// <summary>Starts a run: picks a random target in 0.30..0.70 using <paramref name="rng"/> and starts moving.</summary>
@@ -74,6 +85,7 @@ public partial class TimingBar : Control
 		_elapsed = 0;
 		_feedbackLeft = 0;
 		_running = true;
+		SetProcess(true);
 		if (_label != null) _label.Text = label;
 		if (_feedback != null) _feedback.Text = "";
 		QueueRedraw();
@@ -93,6 +105,7 @@ public partial class TimingBar : Control
 
 		_feedback.Text = accuracy >= PerfectAccuracy ? "Perfect!" : accuracy >= GoodAccuracy ? "Good" : "Missed";
 		_feedbackLeft = FeedbackSeconds;
+		SetProcess(true);
 		QueueRedraw();
 		EmitSignal(SignalName.Stopped, accuracy);
 		return accuracy;
@@ -111,6 +124,8 @@ public partial class TimingBar : Control
 			if (_feedbackLeft <= 0 && _feedback != null)
 				_feedback.Text = "";
 		}
+		if (!_running && _feedbackLeft <= 0)
+			SetProcess(false);
 	}
 
 	public override void _GuiInput(InputEvent @event)
@@ -149,7 +164,9 @@ public partial class TimingBar : Control
 		DrawRect(new Rect2(zoneLeft, barY + 1, Math.Max(zoneRight - zoneLeft, 1), 1), Palette.Fern);
 
 		// Marker, snapped to whole pixels.
-		int x = (int)Math.Round(1 + MarkerPosition * (inner - MarkerWidth));
+		// Same mapping as the zone (centre = 1 + pos * inner), then offset by half the marker width.
+		int x = (int)Math.Round(1 + MarkerPosition * inner - MarkerWidth / 2.0);
+		x = Math.Clamp(x, 1, BarWidth - 1 - MarkerWidth);
 		DrawRect(new Rect2(x - 1, barY, MarkerWidth + 2, BarHeight), Palette.Espresso);
 		DrawRect(new Rect2(x, barY + 1, MarkerWidth, BarHeight - 2), Palette.Apricot);
 	}

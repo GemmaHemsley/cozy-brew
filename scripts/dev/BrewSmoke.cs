@@ -51,6 +51,27 @@ public class BrewSmoke : ISmokeSuite
 		// Iced coffee: three steps.
 		panel.Begin(Menu.Get(ItemId.IcedCoffee), 1.0);
 		t.That(panel.StepCount == 3, "iced coffee has 3 steps");
+
+		// Re-Begin with a bar still running (iced coffee) as a pastry: the old bar must not fire into the empty recipe.
+		finished = 0;
+		panel.Begin(Menu.Get(ItemId.Croissant), 0.75);
+		t.That(!panel.Bar.Running && panel.StepCount == 0, "re-Begin(pastry) cancels the running bar");
+		t.That(panel.Bar.StopNow() == -1, "cancelled bar ignores StopNow (no crash)");
+		panel.RunPendingForTests();
+		t.That(finished == 1 && result == 1.0, "pastry after a drink finishes 1.0");
+
+		// Panel removed and re-added keeps working (subscription survives re-entry).
+		finished = 0;
+		t.Root.RemoveChild(panel);
+		t.Root.AddChild(panel);
+		panel.Begin(Menu.Get(ItemId.Latte), 0.75);
+		panel.Bar.StopNow();
+		panel.SkipPauseForTests();
+		t.That(panel.StepText == "Step 2/2", "panel advances after remove and re-add");
+
+		// Panel sits on whole pixels.
+		var pos = panel.GetChild<PanelContainer>(0).Position;
+		t.That(pos == pos.Floor(), "panel position is whole pixels");
 		panel.QueueFree();
 	}
 }
