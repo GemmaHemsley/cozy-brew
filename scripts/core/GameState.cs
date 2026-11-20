@@ -23,11 +23,18 @@ public partial class GameState : Node
 	[Signal] public delegate void RecipeUnlockedEventHandler(int itemId);
 	[Signal] public delegate void HeartsChangedEventHandler(int regularId, int hearts);
 	[Signal] public delegate void DayTimeUpEventHandler();
+	/// <summary>Emitted at the end of <see cref="NewGame"/>. UI that mirrors state (menus, hearts) should rebuild itself.</summary>
+	[Signal] public delegate void GameResetEventHandler();
 
 	// Tuning. [Export] values show in the inspector when this script is attached to a node in a scene.
 	// As a plain-script autoload they use these defaults; to tune them in the editor, make a scene with a
 	// GameState node and register that .tscn as the autoload instead.
-	[Export] public float DayLengthSeconds { get; set; } = 360f; // ~6 real minutes per in-game day
+	[Export]
+	public float DayLengthSeconds // ~6 real minutes per in-game day; clamped so a 0 in the inspector can't end the day instantly
+	{
+		get => _dayLengthSeconds;
+		set => _dayLengthSeconds = Mathf.Max(1f, value);
+	}
 	[Export] public int DayStartHour { get; set; } = 8;          // in-game clock shown on the HUD
 	[Export] public int DayEndHour { get; set; } = 18;
 	[Export] public int StartingCoins { get; set; } = 0;
@@ -40,8 +47,10 @@ public partial class GameState : Node
 	public bool ClockRunning { get; private set; }
 
 	/// <summary>0 at opening, 1 at closing time.</summary>
-	public double DayProgress => DayLengthSeconds <= 0f ? 1.0 : Math.Clamp(ClockSeconds / DayLengthSeconds, 0.0, 1.0);
+	public double DayProgress => Math.Clamp(ClockSeconds / DayLengthSeconds, 0.0, 1.0);
 
+	private float _dayLengthSeconds = 360f;
+	private bool _initialised;
 	private readonly HashSet<ItemId> _unlocked = new();
 	private readonly Dictionary<RegularId, int> _hearts = new();
 
@@ -58,7 +67,10 @@ public partial class GameState : Node
 
 	public override void _Ready()
 	{
-		NewGame();
+		// Set up defaults once, silently. If something (e.g. a future save loader) already initialised the
+		// state before this node became ready, don't wipe it.
+		if (!_initialised)
+			ResetState();
 	}
 
 	// _Process runs every frame; delta is seconds since the last frame (like Time.deltaTime in Unity).
@@ -69,9 +81,26 @@ public partial class GameState : Node
 
 	// ----- Game / day lifecycle -----
 
-	/// <summary>Resets everything to day 1.</summary>
+	/// <summary>Resets everything to day 1 and tells listeners to refresh.</summary>
 	public void NewGame()
 	{
+		var oldHearts = _hearts.ToDictionary(pair => pair.Key, pair => pair.Value);
+		ResetState();
+
+		EmitSignal(SignalName.CoinsChanged, Coins);
+		EmitSignal(SignalName.DayChanged, Day);
+		foreach (var (regular, before) in oldHearts)
+		{
+			if (before != GetHearts(regular))
+				EmitSignal(SignalName.HeartsChanged, (int)regular, GetHearts(regular));
+		}
+		EmitSignal(SignalName.GameReset);
+	}
+
+	/// <summary>Sets every field to its day-1 value without emitting signals.</summary>
+	private void ResetState()
+	{
+		_initialised = true;
 		Day = 1;
 		Coins = StartingCoins;
 		ClockSeconds = 0;
@@ -83,9 +112,6 @@ public partial class GameState : Node
 		_hearts.Clear();
 		foreach (RegularId regular in Enum.GetValues<RegularId>())
 			_hearts[regular] = 0;
-
-		EmitSignal(SignalName.CoinsChanged, Coins);
-		EmitSignal(SignalName.DayChanged, Day);
 	}
 
 	/// <summary>Moves to the next day: stops and resets the clock and unlocks anything due.</summary>
@@ -141,11 +167,12 @@ public partial class GameState : Node
 
 	// ----- Coins -----
 
+	/// <summary>Earns coins (tips, sales). Ignores zero and negative amounts: spend with <see cref="TrySpend"/>.</summary>
 	public void AddCoins(int amount)
 	{
-		if (amount == 0)
+		if (amount <= 0)
 			return;
-		Coins = Math.Max(0, Coins + amount);
+		Coins += amount;
 		EmitSignal(SignalName.CoinsChanged, Coins);
 	}
 

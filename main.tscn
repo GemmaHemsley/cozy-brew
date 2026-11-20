@@ -3,5 +3,4 @@
 [ext_resource type="Script" uid="uid://6c2e26bvts63" path="res://scripts/Main.cs" id="1_ig7tw"]
 
 [node name="Main" type="Node2D" unique_id=1953434742]
-scale = Vector2(0.8238636, 12)
 script = ExtResource("1_ig7tw")
