@@ -22,7 +22,7 @@ tools: Read, Grep, Glob, Bash        # optional allowlist; omit to inherit all t
 The system prompt: who it is, what it must and must not do, what it reports back.
 ```
 - `name`: how you refer to it. `description`: the trigger text; write it as "Use when …".
-- `tools`: least privilege. The reviewer cannot edit files because `Write`/`Edit` aren't listed.
+- `tools`: least privilege. The reviewer has no `Edit`, so it cannot modify code; it has `Write` only so it can create its report file, and its instructions limit it to that one path. (Tool lists restrict *which tools*; *which files* is enforced by instructions and by your review.)
 - Project agents (`.claude/agents/`, committed) are shared by everyone using the repo and travel into every git worktree. Personal ones go in `~/.claude/agents/`.
 - Manage them with the `/agents` command inside a session (list, create, edit), or edit the files directly.
 - Call one by name in plain language: *"Use the reviewer agent to review branch wp-a."* Subagents can't launch other subagents.

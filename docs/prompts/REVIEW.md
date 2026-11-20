@@ -12,6 +12,7 @@ each with file:line and a concrete failure scenario.
 
 Additionally, in this session (not the subagent), run `/code-review medium` on the same diff and merge any finding the reviewer agent
 missed into the review file under a heading "Second opinion (/code-review)". Do not change any code.
+Finally commit only the report: `git add docs/reports/<Package>-review.md && git commit -m "docs: <Package> review report"`.
 Reply with the verdict and the counts of Blockers / Should fix / Nits.
 ```
 
