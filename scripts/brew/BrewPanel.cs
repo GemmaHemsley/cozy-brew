@@ -32,12 +32,14 @@ public partial class BrewPanel : Control
 	private bool _finishPending;
 	private int _pauseToken; // bumped to invalidate an outstanding pause timer
 	private MenuItem _pendingItem; // Begin called before _Ready
+	private bool _advancePending; // a stopped step is waiting out its feedback pause
 
 	public int StepCount => _steps.Count;
 	public int StepIndex => _stepIndex;
 	public bool Active => _active;
 	public string StepText => _stepLabel?.Text ?? "";
 	public TimingBar Bar => _bar;
+	public bool AdvancePending => _advancePending;
 
 	public override void _Ready()
 	{
@@ -67,6 +69,7 @@ public partial class BrewPanel : Control
 		_bar.Stopped += OnStepStopped;
 
 		_panel.Visible = false;
+		Resized += Recenter; // Resized is a built-in Control signal; re-centre whenever layout gives us a real size
 		if (_pendingItem != null)
 		{
 			var item = _pendingItem;
@@ -75,9 +78,16 @@ public partial class BrewPanel : Control
 		}
 	}
 
+	public override void _EnterTree()
+	{
+		// Re-added mid-pause (the timer was invalidated in _ExitTree): arm the advance again so the brew cannot stall.
+		if (_advancePending)
+			ScheduleAdvance();
+	}
+
 	public override void _ExitTree()
 	{
-		_pauseToken++; // any pending timer callback becomes a no-op
+		_pauseToken++; // any pending timer callback becomes a no-op; _advancePending stays set so _EnterTree re-arms
 		// The Stopped subscription is made once in _Ready and is deliberately NOT removed here: _Ready runs once per
 		// node lifetime, so unsubscribing would break the panel if it is removed and re-added. The bar is our child
 		// and is freed with us, so nothing leaks.
@@ -94,6 +104,7 @@ public partial class BrewPanel : Control
 		}
 
 		_pauseToken++;
+		_advancePending = false;
 		_bar.Cancel(); // a bar still running from a previous Begin must not fire into the new recipe
 		_steps = BrewRecipes.StepsFor(item.Id);
 		_accuracies.Clear();
@@ -113,8 +124,13 @@ public partial class BrewPanel : Control
 		_name.Text = item.Name;
 		_panel.Visible = true;
 		StartStep();
-		_panel.ResetSize();
-		// Centre by hand and floor so an odd size never lands the panel on a half pixel.
+	}
+
+	/// <summary>Centres the panel by hand and floors so an odd size never lands it on a half pixel.</summary>
+	private void Recenter()
+	{
+		if (_panel == null) return;
+		_panel.ResetSize(); // shrink to minimum size so the centring uses the real panel size
 		_panel.Position = ((Size - _panel.Size) / 2).Floor();
 	}
 
@@ -123,6 +139,7 @@ public partial class BrewPanel : Control
 		var step = _steps[_stepIndex];
 		_stepLabel.Text = $"Step {_stepIndex + 1}/{_steps.Count}";
 		_bar.Begin(LabelFor(step), TimingBarMath.ConfigFor(step, _grind), _rng);
+		Recenter(); // the step text can change the panel's minimum size
 	}
 
 	public static string LabelFor(BrewStep step) => step switch
@@ -147,10 +164,16 @@ public partial class BrewPanel : Control
 		});
 		_accuracies.Add(accuracy);
 
+		ScheduleAdvance();
+	}
+
+	private void ScheduleAdvance()
+	{
+		_advancePending = true;
 		int token = ++_pauseToken;
 		GetTree().CreateTimer(StepPauseSeconds).Timeout += () =>
 		{
-			if (token == _pauseToken && IsInstanceValid(this))
+			if (token == _pauseToken && IsInstanceValid(this) && IsInsideTree())
 				AdvanceStep();
 		};
 	}
@@ -158,6 +181,7 @@ public partial class BrewPanel : Control
 	private void AdvanceStep()
 	{
 		_pauseToken++;
+		_advancePending = false;
 		_stepIndex++;
 		if (_stepIndex < _steps.Count)
 		{

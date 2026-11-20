@@ -27,7 +27,7 @@ public partial class TimingBar : Control
 	/// <summary>How long the "Perfect!/Good/Missed" text stays visible.</summary>
 	public const double FeedbackSeconds = 0.5;
 	/// <summary>Accuracy at or above this reads as "Perfect!"; at or above GoodAccuracy as "Good".</summary>
-	public const double PerfectAccuracy = 0.98;
+	public const double PerfectAccuracy = 1.0 - 1e-9; // only the drawn green zone (accuracy 1.0) reads as Perfect
 	public const double GoodAccuracy = 0.5;
 
 	private Label _label;
@@ -38,6 +38,7 @@ public partial class TimingBar : Control
 	private double _feedbackLeft;
 	private double _stoppedPosition;
 	private bool _running;
+	private ulong _beginFrame; // input on the frame a run starts is ignored (it is the event that started the brew)
 
 	public bool Running => _running;
 	/// <summary>Target centre (0..1) of the current run.</summary>
@@ -85,6 +86,7 @@ public partial class TimingBar : Control
 		_elapsed = 0;
 		_feedbackLeft = 0;
 		_running = true;
+		_beginFrame = Engine.GetProcessFrames();
 		SetProcess(true);
 		if (_label != null) _label.Text = label;
 		if (_feedback != null) _feedback.Text = "";
@@ -130,7 +132,7 @@ public partial class TimingBar : Control
 
 	public override void _GuiInput(InputEvent @event)
 	{
-		if (_running && @event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
+		if (_running && Engine.GetProcessFrames() > _beginFrame && @event is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Left })
 		{
 			AcceptEvent();
 			StopNow();
@@ -139,7 +141,7 @@ public partial class TimingBar : Control
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (_running && @event.IsActionPressed("confirm"))
+		if (_running && Engine.GetProcessFrames() > _beginFrame && @event.IsActionPressed("confirm"))
 		{
 			GetViewport().SetInputAsHandled();
 			StopNow();

@@ -62,3 +62,22 @@ Nits left: test hooks stay in production code (the synchronous smoke suite needs
 Smoke suite additions (covers the second-opinion nit): re-Begin pastry after a running drink, `StopNow` on a cancelled bar, remove and re-add the panel then run a step, whole-pixel panel position.
 
 Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke after `--import`: `SMOKE OK (26 checks)`, exit 0. Nothing skipped. No visual check in a real window.
+
+## Review fixes (round 2)
+Source: "Second opinion (/code-review)" in `docs/reports/WP-D-review.md`. The review verdict was APPROVE, so everything here is optional.
+
+Fixed (rated important by /code-review):
+1. `_ExitTree` / `_pauseToken` stall (BrewPanel): added `_advancePending`. Set when a step stops, cleared when the step advances or `Begin` runs. `_ExitTree` still invalidates the old timer; the new `_EnterTree` calls `ScheduleAdvance()` if a pause was pending, so a panel removed and re-added mid-pause finishes its brew. The timer callback also checks `IsInsideTree()`.
+2. Centring before layout (BrewPanel): centring moved into `Recenter()` (`ResetSize()` then `((Size - panelSize) / 2).Floor()`). It runs on the `Resized` signal and after every `StartStep`, so the `Begin`-before-`_Ready` path and size changes both end up centred on whole pixels.
+
+Nits fixed (trivial):
+3. "Perfect!" threshold (TimingBar): `PerfectAccuracy` is now `1.0 - 1e-9`, so the label matches the drawn green zone (accuracy 1.0).
+4. Input grace (TimingBar): mouse and `confirm` handlers ignore input on the frame a run begins (`Engine.GetProcessFrames()`), so the event that started the brew cannot stop step 1. `StopNow()` itself is not gated, so tests still drive it directly.
+
+Left as is:
+5. Mouse backdrop while brewing: whether the café blocks clicks, dims, or pauses during a brew is a scene-level decision for WP-E, which owns the café. Adding a Stop-filter backdrop here would be speculative. Recorded as a need for WP-E.
+6. Per-step SFX for Matcha/Cocoa/Ice: `SfxId` is owned by another package and has no such IDs; `Click` fallback is intentional until audio exists.
+
+Smoke additions (7 new checks, 26 -> 33 in the Brew suite; whole run 33 `ok` lines): advance pending after stop, stays pending after removal, re-armed on re-add, completes afterwards; centred after `Resized` for a panel that was `Begin`-ed before `_Ready`; re-centred on an odd size with whole pixels; Perfect threshold. The real timer firing is not exercised headlessly (the suite is synchronous), only the re-arm state.
+
+Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke `SMOKE OK (33 checks)`, exit 0. Nothing failed or was skipped. No visual check in a real window.

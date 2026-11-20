@@ -72,6 +72,32 @@ public class BrewSmoke : ISmokeSuite
 		// Panel sits on whole pixels.
 		var pos = panel.GetChild<PanelContainer>(0).Position;
 		t.That(pos == pos.Floor(), "panel position is whole pixels");
+
+		// Removed during the feedback pause, then re-added: the advance is re-armed instead of stalling.
+		panel.Begin(Menu.Get(ItemId.Latte), 0.75);
+		panel.Bar.StopNow();
+		t.That(panel.AdvancePending, "advance is pending after a step stops");
+		t.Root.RemoveChild(panel);
+		t.That(panel.AdvancePending, "advance stays pending when the panel leaves the tree");
+		t.Root.AddChild(panel);
+		t.That(panel.AdvancePending && panel.StepText == "Step 1/2", "re-added mid-pause: advance re-armed");
+		panel.SkipPauseForTests();
+		t.That(!panel.AdvancePending && panel.StepText == "Step 2/2", "advance completes after re-arm");
+
+		// Centring: Begin before the panel has a size, then layout gives it one.
+		var late = panelScene.Instantiate<BrewPanel>();
+		late.Begin(Menu.Get(ItemId.Latte), 0.75); // before _Ready: pending path, Size is (0,0)
+		t.Root.AddChild(late);
+		late.SetAnchorsPreset(Control.LayoutPreset.TopLeft); // full-rect anchors would override the Size we set below
+		late.Size = new Vector2(320, 180);
+		var inner = late.GetChild<PanelContainer>(0);
+		t.That(inner.Position == ((late.Size - inner.Size) / 2).Floor(), "panel centred after Resized");
+		late.Size = new Vector2(321, 181);
+		t.That(inner.Position == ((late.Size - inner.Size) / 2).Floor() && inner.Position == inner.Position.Floor(), "panel re-centred on odd size, whole pixels");
+		late.QueueFree();
+
+		// Accuracy just under 1.0 is not labelled Perfect.
+		t.That(TimingBar.PerfectAccuracy > 0.99, "Perfect label needs the real perfect zone");
 		panel.QueueFree();
 	}
 }
