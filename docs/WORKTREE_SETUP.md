@@ -67,3 +67,28 @@ cd ~/cozy-brew
 git worktree remove ../cozy-brew-wp-a
 git branch -d wp-a
 ```
+
+## After packages are built: merge, refresh docs, playtest
+Status as of the end of the first session: WP-A and WP-D are reviewed, verified and merged into `integration`. WP-B and WP-C are not started yet.
+
+1. **Build the remaining wave-1 packages** (B and C, in two tabs), each with the per-worktree steps above, then REVIEW.md, then VERIFY.md.
+2. **Merge into `integration`.** Git allows a branch to be checked out in only one folder. `integration` is currently checked out in `~/cozy-brew-wp-d`, so run the merge there:
+   ```sh
+   cd ~/cozy-brew-wp-d
+   claude
+   ```
+   Paste `docs/prompts/MERGE.md` with its first line set to `Packages to merge, in this order: wp-b wp-c`.
+   (If you would rather merge from the main folder, first free the branch with `git worktree remove ../cozy-brew-wp-d`; the `wp-d` branch itself is kept.)
+3. **Refresh docs:** paste `docs/prompts/DOCS-REFRESH.md` once, after all four packages are merged.
+4. **Playtest.** Nothing is playable until WP-B (screens) and WP-C (café world) are merged. Then, in the folder that has `integration` checked out:
+   ```sh
+   "$GODOT" --path .
+   ```
+   (no `--headless`: that runs without a window). Or open the folder as a project in the Godot editor and press F5.
+5. **Next:** WP-E (integration wiring), then WP-F (polish). You merge `integration` into `main` yourself when happy.
+
+## Tidy up finished worktrees
+`~/cozy-brew-wp-a` is finished. Remove it any time: `cd ~/cozy-brew && git worktree remove ../cozy-brew-wp-a`. Keep `wp-d`'s folder while it is your `integration` checkout.
+
+## Note: there is no git remote yet
+Everything is local. To back it up, create an empty repo on GitHub and run `git remote add origin <url>` then `git push -u origin main integration`.
