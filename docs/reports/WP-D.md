@@ -81,3 +81,16 @@ Left as is:
 Smoke additions (7 new checks, 26 -> 33 in the Brew suite; whole run 33 `ok` lines): advance pending after stop, stays pending after removal, re-armed on re-add, completes afterwards; centred after `Resized` for a panel that was `Begin`-ed before `_Ready`; re-centred on an odd size with whole pixels; Perfect threshold. The real timer firing is not exercised headlessly (the suite is synchronous), only the re-arm state.
 
 Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke `SMOKE OK (33 checks)`, exit 0. Nothing failed or was skipped. No visual check in a real window.
+
+## Review fixes (round 3)
+Source: second opinion in `docs/reports/WP-D-review.md` (verdict CHANGES REQUESTED, 0 Blocker).
+
+Already fixed in earlier rounds (598f37e): reviewer Should fix 1 (stall on `_ExitTree` during pause) and 2 (centring before layout), Nits 1 (Perfect threshold) and 2 (same-frame input).
+
+Fixed now:
+1. Second-opinion Should fix (stale min-size when centring): `BrewPanel` now also subscribes to the inner panel's `MinimumSizeChanged` (emitted after Godot recalculates the size at end of frame) and calls `Recenter()`. The immediate call in `StartStep` stays. Self-signal of a child we own, freed with us, so no disconnect needed.
+2. Reviewer Nit 3 (`TimingBar` before `_Ready`): label text is stored in `_labelText` and applied in `_Ready`; `StopNow` no longer dereferences a null `_feedback`.
+
+Not changed (Nits, judgement calls): the same-frame input guard also applies when step 2 begins from the timer (very small window, a swallowed double-tap just keeps the bar running); `_EnterTree` re-arm restarts the full pause; test hooks remain public (noted for WP-E); smoke assertions for the Perfect threshold and async `Resized` timing left as is; Perfect threshold stays at the strict 1 - 1e-9 (matches the drawn zone).
+
+Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke `SMOKE OK (33 checks)`, exit 0 (the one ArtCatalog missing-art warning is the intentional fallback test). No window check.

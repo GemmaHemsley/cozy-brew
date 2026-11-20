@@ -31,6 +31,7 @@ public partial class TimingBar : Control
 	public const double GoodAccuracy = 0.5;
 
 	private Label _label;
+	private string _labelText = ""; // kept so Begin before _Ready is not lost
 	private Label _feedback;
 	private TimingBarConfig _config;
 	private double _target = 0.5;
@@ -54,6 +55,7 @@ public partial class TimingBar : Control
 
 		_label = new Label { Position = Vector2.Zero, Size = new Vector2(BarWidth, LabelHeight) };
 		_label.HorizontalAlignment = HorizontalAlignment.Center;
+		_label.Text = _labelText;
 		AddChild(_label);
 
 		_feedback = new Label
@@ -88,6 +90,7 @@ public partial class TimingBar : Control
 		_running = true;
 		_beginFrame = Engine.GetProcessFrames();
 		SetProcess(true);
+		_labelText = label;
 		if (_label != null) _label.Text = label;
 		if (_feedback != null) _feedback.Text = "";
 		QueueRedraw();
