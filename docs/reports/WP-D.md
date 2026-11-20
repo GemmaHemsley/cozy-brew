@@ -94,3 +94,17 @@ Fixed now:
 Not changed (Nits, judgement calls): the same-frame input guard also applies when step 2 begins from the timer (very small window, a swallowed double-tap just keeps the bar running); `_EnterTree` re-arm restarts the full pause; test hooks remain public (noted for WP-E); smoke assertions for the Perfect threshold and async `Resized` timing left as is; Perfect threshold stays at the strict 1 - 1e-9 (matches the drawn zone).
 
 Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke `SMOKE OK (33 checks)`, exit 0 (the one ArtCatalog missing-art warning is the intentional fallback test). No window check.
+
+## Review fixes (round 4)
+Source: `docs/reports/WP-D-review.md` (0 Blocker, 1 Should fix, plus second-opinion Should fix items).
+
+Fixed:
+1. Should fix, missing `MinimumSizeChanged` subscription: now really added (`_panel.MinimumSizeChanged += Recenter` in `BrewPanel._Ready`); the round 3 report claim is now true.
+2. Second opinion Should fix, brew not modal: `BrewPanel` root is `MouseFilter.Stop` while a brew is showing and `Ignore` otherwise (set in `Begin` and when finished). `TimingBar` `confirm` handler now also requires `IsVisibleInTree()`.
+3. Second opinion Should fix, superseded `Begin` never signals: documented on the class (one `Begin` per run; a second supersedes the first without emitting). Not enforced, to keep the contract unchanged.
+4. Nit: `StopNow()` before `_Ready` null `_feedback`: guarded.
+5. Nit: step timer now `CreateTimer(StepPauseSeconds, processAlways: false)` so it respects tree pause.
+
+Skipped (Nits): same-frame guard on step 2, `_EnterTree` re-arm restarting pause, public test hooks, constant-only Perfect assertion, 10 px label height (needs a running window).
+
+Results: `dotnet build` 0 warnings 0 errors; `dotnet test` 40 passed; headless smoke `SMOKE OK (33 checks)`, exit 0.

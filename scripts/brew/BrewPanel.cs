@@ -6,6 +6,8 @@ using Godot;
 /// Centred panel that brews one menu item: runs the recipe's steps in order with one TimingBar each and emits
 /// BrewFinished(accuracy) with the mean accuracy. Pastries (no steps) finish with 1.0 on the next frame without
 /// showing anything. Call Begin after the panel has been added to the scene tree.
+/// Call Begin once per run: a second Begin supersedes the first, whose BrewFinished is never emitted.
+/// While a brew is showing, the panel root blocks mouse clicks to whatever is behind it.
 ///
 /// Godot notes: the panel is built in code in _Ready; PackedScene instancing creates the root node from
 /// BrewPanel.tscn and runs this script. `CallDeferred` runs a method at the end of the current frame.
@@ -69,6 +71,7 @@ public partial class BrewPanel : Control
 		_bar.Stopped += OnStepStopped;
 
 		_panel.Visible = false;
+		_panel.MinimumSizeChanged += Recenter; // fires after Godot recalculates the inner panel's minimum size (end of frame)
 		Resized += Recenter; // Resized is a built-in Control signal; re-centre whenever layout gives us a real size
 		if (_pendingItem != null)
 		{
@@ -115,6 +118,7 @@ public partial class BrewPanel : Control
 		if (_steps.Count == 0)
 		{
 			_panel.Visible = false;
+			MouseFilter = MouseFilterEnum.Ignore;
 			_finishPending = true;
 			CallDeferred(nameof(FinishPending)); // "next frame": fires at the end of the current one
 			return;
@@ -123,6 +127,7 @@ public partial class BrewPanel : Control
 		_icon.Texture = ArtCatalog.Get(item.ArtKey);
 		_name.Text = item.Name;
 		_panel.Visible = true;
+		MouseFilter = MouseFilterEnum.Stop; // modal while brewing
 		StartStep();
 	}
 
@@ -171,7 +176,7 @@ public partial class BrewPanel : Control
 	{
 		_advancePending = true;
 		int token = ++_pauseToken;
-		GetTree().CreateTimer(StepPauseSeconds).Timeout += () =>
+		GetTree().CreateTimer(StepPauseSeconds, processAlways: false).Timeout += () =>
 		{
 			if (token == _pauseToken && IsInstanceValid(this) && IsInsideTree())
 				AdvanceStep();
@@ -189,6 +194,7 @@ public partial class BrewPanel : Control
 			return;
 		}
 		_panel.Visible = false;
+		MouseFilter = MouseFilterEnum.Ignore;
 		_active = false;
 		EmitSignal(SignalName.BrewFinished, TimingBarMath.Combine(_accuracies));
 	}

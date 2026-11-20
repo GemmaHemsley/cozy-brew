@@ -108,7 +108,7 @@ public partial class TimingBar : Control
 		_running = false;
 		double accuracy = TimingBarMath.Accuracy(_stoppedPosition, _target, _config.PerfectHalfWidth, _config.ZeroAccuracyDistance);
 
-		_feedback.Text = accuracy >= PerfectAccuracy ? "Perfect!" : accuracy >= GoodAccuracy ? "Good" : "Missed";
+		if (_feedback != null) _feedback.Text = accuracy >= PerfectAccuracy ? "Perfect!" : accuracy >= GoodAccuracy ? "Good" : "Missed";
 		_feedbackLeft = FeedbackSeconds;
 		SetProcess(true);
 		QueueRedraw();
@@ -144,7 +144,7 @@ public partial class TimingBar : Control
 
 	public override void _UnhandledInput(InputEvent @event)
 	{
-		if (_running && Engine.GetProcessFrames() > _beginFrame && @event.IsActionPressed("confirm"))
+		if (_running && IsVisibleInTree() && Engine.GetProcessFrames() > _beginFrame && @event.IsActionPressed("confirm"))
 		{
 			GetViewport().SetInputAsHandled();
 			StopNow();
