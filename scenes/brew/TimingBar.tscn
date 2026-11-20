@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/brew/TimingBar.cs" id="1_TimingBar"]
+
+[node name="TimingBar" type="Control"]
+script = ExtResource("1_TimingBar")

@@ -1,0 +1,56 @@
+using System;
+using Godot;
+
+/// <summary>Headless checks for WP-D: both brew scenes instantiate and behave.</summary>
+public class BrewSmoke : ISmokeSuite
+{
+	public string Name => "Brew";
+
+	public void Run(SmokeCheck t)
+	{
+		var barScene = GD.Load<PackedScene>("res://scenes/brew/TimingBar.tscn");
+		var panelScene = GD.Load<PackedScene>("res://scenes/brew/BrewPanel.tscn");
+		t.That(barScene != null && panelScene != null, "TimingBar.tscn and BrewPanel.tscn load");
+
+		// TimingBar: begin, stop, signal fires once with 0..1.
+		var bar = barScene.Instantiate<TimingBar>();
+		t.Root.AddChild(bar);
+		int stops = 0;
+		double acc = -1;
+		bar.Stopped += a => { stops++; acc = a; };
+		bar.Begin("Pull the shot", TimingBarMath.ConfigFor(BrewStep.Shot, 0.75), new Random(1));
+		t.That(bar.Running && bar.Target >= 0.30 && bar.Target <= 0.70, "TimingBar runs with a target in 0.30..0.70");
+		bar.StopNow();
+		t.That(stops == 1 && acc >= 0 && acc <= 1 && !bar.Running, "TimingBar.StopNow emits Stopped(accuracy 0..1) once");
+		bar.StopNow();
+		t.That(stops == 1, "a second stop is ignored");
+		bar.QueueFree();
+
+		// BrewPanel with a pastry: finishes 1.0 on the next frame.
+		var panel = panelScene.Instantiate<BrewPanel>();
+		t.Root.AddChild(panel);
+		int finished = 0;
+		double result = -1;
+		panel.BrewFinished += a => { finished++; result = a; };
+		panel.Begin(Menu.Get(ItemId.Croissant), 0.75);
+		t.That(finished == 0 && !panel.Bar.Running, "pastry: nothing shown, finish is deferred");
+		panel.RunPendingForTests();
+		t.That(finished == 1 && result == 1.0, "pastry: BrewFinished(1.0)");
+
+		// Latte: two steps.
+		finished = 0;
+		panel.Begin(Menu.Get(ItemId.Latte), 0.75);
+		t.That(panel.StepCount == 2 && panel.StepText == "Step 1/2" && panel.Bar.Running, "latte shows Step 1/2 of 2");
+		panel.Bar.StopNow();
+		panel.SkipPauseForTests();
+		t.That(panel.StepText == "Step 2/2" && panel.Bar.Running, "latte advances to Step 2/2");
+		panel.Bar.StopNow();
+		panel.SkipPauseForTests();
+		t.That(finished == 1 && result >= 0 && result <= 1, "latte emits BrewFinished(0..1) after both steps");
+
+		// Iced coffee: three steps.
+		panel.Begin(Menu.Get(ItemId.IcedCoffee), 1.0);
+		t.That(panel.StepCount == 3, "iced coffee has 3 steps");
+		panel.QueueFree();
+	}
+}
