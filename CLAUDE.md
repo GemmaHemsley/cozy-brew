@@ -55,7 +55,7 @@ The art is **individual single-frame PNGs, not sprite sheets** (41 files). `art/
 | `barista_idle/bob/blink.png` | Barista, 16x24 each (idle loop = idle + bob; blink separate) |
 | `cat_idle/blink.png` | Biscuit, 16x16 |
 | `cust_beanie/dusk/fox/rose/sage.png` | Customers, 16x24. Three body silhouettes, not one shared body. Name mapping to Juniper/Sage/Milo/Rosie/Theo is **unconfirmed** (guess: fox=Juniper, sage=Sage, beanie=Milo, rose=Rosie, dusk=Theo) |
-| `latte, espresso, matcha, cocoa, iced_coffee, croissant, muffin, cookie, cake.png` | Menu items, 16x16 (`iced_coffee` is currently 16x15) |
+| `latte, espresso, matcha, cocoa, iced_coffee, croissant, muffin, cookie, cake.png` | Menu items, 16x16 |
 | `floor_wood, floor_checker, wallpaper, wainscot, brick, counter_top, counter_front.png` | 16x16 tiles |
 | `espresso_machine` 24x24, `window` 32x32, `chalkboard` 32x24, `shelf` 32x16 | Props |
 | `plant, table, chair, lamp.png` | Props, 16x16 (chair: flip for left) |
@@ -80,3 +80,4 @@ Art not made yet (use placeholders built from palette colours): walk cycles, sea
 - Simple `.tscn` edits are fine; for complex layout, explain the editor steps instead
 - Build only what the current prompt asks for; note ideas for later instead of implementing them
 - After changes, run `dotnet build` and fix all errors before reporting done
+- Docs: `README.md` (commands), `docs/ARCHITECTURE.md`, `docs/CONTRACTS.md` (APIs per work package), `docs/GAME_RULES.md` (tuning numbers), `docs/AGENTS_GUIDE.md`, `docs/prompts/` (runbook). Godot-free logic goes in `scripts/data`, `scripts/cafe/logic`, `scripts/brew/logic` and is unit tested (`dotnet test tests/CozyBrew.Tests`); headless smoke test: see README

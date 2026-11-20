@@ -41,7 +41,7 @@ Customer to cast mapping is **not stated anywhere**. Inferred from file names, p
 | `espresso.png` | 16x16 | Espresso | x2-13, y3-15 |
 | `matcha.png` | 16x16 | Matcha | x1-15, y1-15 |
 | `cocoa.png` | 16x16 | Cocoa | x1-15, y1-15 |
-| `iced_coffee.png` | **16x15** | Iced coffee | x3-13, y0-14 (**1 px short, see flags**) |
+| `iced_coffee.png` | 16x16 | Iced coffee | x3-13, y1-15 (padded from 16x15 with one transparent row on top so its baseline matches the other items) |
 | `croissant.png` | 16x16 | Croissant | x0-16, y5-12 (full width) |
 | `muffin.png` | 16x16 | Muffin | x2-14, y2-12 |
 | `cookie.png` | 16x16 | Cookie | x1-15, y3-14 |
@@ -96,7 +96,7 @@ Customer to cast mapping is **not stated anywhere**. Inferred from file names, p
 ## Flags: mismatches with CLAUDE.md
 
 1. **No sprite sheets exist.** CLAUDE.md's table lists 7 sheets plus `bg_cafe_reference.png`; reality is 41 single-frame files. Either CLAUDE.md should be updated, or the art regenerated as sheets. `ArtCatalog` should map keys to single files for now (region = whole image) and can switch to sheet regions later without callers changing.
-2. **`iced_coffee.png` is 16x15**, not 16x16. Its content touches the top row (y0) and the bottom row is missing. Placed on a 16x16 grid it will sit 1 px low or high relative to the other items. Needs fixing (pad to 16x16 with a transparent bottom row so it matches the other items' baseline), or handle with a per-item offset in `ArtCatalog`.
+2. ~~`iced_coffee.png` was 16x15~~ **Fixed**: padded to 16x16 (one transparent row added on top; content unchanged).
 3. **Customer mapping is undocumented** and customers are **not one shared body recoloured**: there are 3 silhouettes (A: beanie/dusk, B: fox, C: rose/sage). Colour counts also differ (5-8). Fine to use as-is, but names above are guesses.
 4. **Animation frames are limited.** Barista has 2 idle frames (`idle`, `bob`) plus blink. Cat has idle plus blink only (no tail wag). Customers have 1 static frame each. Matches "walk cycles, seated poses not made yet".
 5. **Icons are 10x10 flat files**, not "10x10 in 16 px cells". Harmless; draw them at native size.

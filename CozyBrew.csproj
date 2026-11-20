@@ -4,4 +4,8 @@
     <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
     <EnableDynamicLoading>true</EnableDynamicLoading>
   </PropertyGroup>
+  <ItemGroup>
+    <!-- The xUnit project lives in tests/ and builds separately (dotnet test tests/CozyBrew.Tests). -->
+    <Compile Remove="tests/**" />
+  </ItemGroup>
 </Project>

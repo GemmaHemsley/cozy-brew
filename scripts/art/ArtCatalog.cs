@@ -33,12 +33,12 @@ public static class ArtCatalog
 		[ArtKeys.CustRose] = new("cust_rose.png", S16x24, Palette.Rose),
 		[ArtKeys.CustSage] = new("cust_sage.png", S16x24, Palette.Matcha),
 
-		// Menu items (iced_coffee.png is 16x15 on disk, see manifest flag #2)
+		// Menu items
 		[ArtKeys.Latte] = new("latte.png", S16, Palette.Latte),
 		[ArtKeys.Espresso] = new("espresso.png", S16, Palette.Walnut),
 		[ArtKeys.Matcha] = new("matcha.png", S16, Palette.Matcha),
 		[ArtKeys.Cocoa] = new("cocoa.png", S16, Palette.Cinnamon),
-		[ArtKeys.IcedCoffee] = new("iced_coffee.png", new Vector2I(16, 15), Palette.Sky),
+		[ArtKeys.IcedCoffee] = new("iced_coffee.png", S16, Palette.Sky),
 		[ArtKeys.Croissant] = new("croissant.png", S16, Palette.Honey),
 		[ArtKeys.Muffin] = new("muffin.png", S16, Palette.Peach),
 		[ArtKeys.Cookie] = new("cookie.png", S16, Palette.Oak),
